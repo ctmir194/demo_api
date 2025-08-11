@@ -1,10 +1,22 @@
 from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 import numpy as np
 import pydantic
 from pydantic import BaseModel, validator
+import pydicom
+import io
+from io import BytesIO
 
 app = FastAPI()
 
+def transformations(file):
+    dcm_file = file
+
+    ## increasing brightness
+    dcm_file.PixelData = (dcm_file.pixel_array + 30).tobytes()
+
+    return dcm_file
+    
 class XRay(BaseModel):
     filename: str
     content: bytes
@@ -21,7 +33,28 @@ class XRay(BaseModel):
             raise ValueError("File does not appear to a DICOM file")
         return value
     
-
-app.post('/generate')
+@app.post('/generate')
 def generate(file: UploadFile = File(...)):
+    dcm_file = pydicom.dcmread(file.file)
+    XRay(**{'filename':'nameok.dcm', 
+            'content':dcm_file})
+    print('=================--------------------=========================')
+    ## applying preprocessing/transformations
+    transformed_dcm_file = transformations(dcm_file)
+
     
+    
+    output_buffer = BytesIO()
+    transformed_dcm_file.save_as(output_buffer)
+    output_buffer.seek(0)  # reset pointer for streaming
+
+    # Return as downloadable DICOM file
+    return StreamingResponse(
+        output_buffer,
+        media_type="application/dicom",
+        headers={
+            "Content-Disposition": f'attachment; filename="edited_{file.filename}"'
+        }
+    )
+
+    # return Response(status_code=200, content=io.BytesIO(transformed_dcm_file))
