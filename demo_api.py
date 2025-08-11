@@ -29,20 +29,20 @@ class XRay(BaseModel):
     
     @validator('content')
     def content_validator(cls, value):
-        if len(value) < 132 or value[128:132] != b"DICM":            ## he b prefix means this is a bytes literal, not a string. ## first 128 bytes are "preamble"                                                    (can be anything or zero-filled) + 4 for DICM so length shold be atleast 132
+        if len(value) < 132 or value[128:132] != b"DICM":            ## here b prefix means this is a bytes literal, not a string. ## first 128 bytes are "preamble"                                                    (can be anything or zero-filled) + 4 for DICM so length shold be atleast 132
             raise ValueError("File does not appear to a DICOM file")
         return value
     
 @app.post('/generate')
 def generate(file: UploadFile = File(...)):
-    dcm_file = pydicom.dcmread(file.file)
-    XRay(**{'filename':'nameok.dcm', 
-            'content':dcm_file})
-    print('=================--------------------=========================')
+
+    file_byte = file.file.read()
+    verified_file  = XRay(**{'filename':file.filename, 
+            'content':file_byte})
+
+    dcm_file = pydicom.dcmread(BytesIO(verified_file.content))
     ## applying preprocessing/transformations
     transformed_dcm_file = transformations(dcm_file)
-
-    
     
     output_buffer = BytesIO()
     transformed_dcm_file.save_as(output_buffer)
