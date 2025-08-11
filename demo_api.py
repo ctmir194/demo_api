@@ -1,13 +1,9 @@
 from fastapi import FastAPI, File, UploadFile
 import numpy as np
 import pydantic
-from pydantic import BaseModel
-
-
-print(dir(pydantic))
+from pydantic import BaseModel, validator
 
 app = FastAPI()
-
 
 class XRay(BaseModel):
     file: File
